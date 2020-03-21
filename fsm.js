@@ -26,56 +26,6 @@
  OTHER DEALINGS IN THE SOFTWARE.
 */
 
-function Node(x, y) {
-	this.x = x;
-	this.y = y;
-	this.mouseOffsetX = 0;
-	this.mouseOffsetY = 0;
-	this.isAcceptState = false;
-	this.text = '';
-}
-
-Node.prototype.setMouseStart = function(x, y) {
-	this.mouseOffsetX = this.x - x;
-	this.mouseOffsetY = this.y - y;
-};
-
-Node.prototype.setAnchorPoint = function(x, y) {
-	this.x = x + this.mouseOffsetX;
-	this.y = y + this.mouseOffsetY;
-};
-
-Node.prototype.draw = function(c) {
-	// draw the circle
-	c.beginPath();
-	c.arc(this.x, this.y, nodeRadius, 0, 2 * Math.PI, false);
-	c.stroke();
-
-	// draw the text
-	drawText(c, this.text, this.x, this.y, null, selectedObject == this);
-
-	// draw a double circle for an accept state
-	if(this.isAcceptState) {
-		c.beginPath();
-		c.arc(this.x, this.y, nodeRadius - 6, 0, 2 * Math.PI, false);
-		c.stroke();
-	}
-};
-
-Node.prototype.closestPointOnCircle = function(x, y) {
-	var dx = x - this.x;
-	var dy = y - this.y;
-	var scale = Math.sqrt(dx * dx + dy * dy);
-	return {
-		'x': this.x + dx * nodeRadius / scale,
-		'y': this.y + dy * nodeRadius / scale,
-	};
-};
-
-Node.prototype.containsPoint = function(x, y) {
-	return (x - this.x)*(x - this.x) + (y - this.y)*(y - this.y) < nodeRadius*nodeRadius;
-};
-
 function Link(a, b) {
 	this.nodeA = a;
 	this.nodeB = b;
@@ -222,6 +172,56 @@ Link.prototype.containsPoint = function(x, y) {
 	return false;
 };
 
+function Node(x, y) {
+	this.x = x;
+	this.y = y;
+	this.mouseOffsetX = 0;
+	this.mouseOffsetY = 0;
+	this.isAcceptState = false;
+	this.text = '';
+}
+
+Node.prototype.setMouseStart = function(x, y) {
+	this.mouseOffsetX = this.x - x;
+	this.mouseOffsetY = this.y - y;
+};
+
+Node.prototype.setAnchorPoint = function(x, y) {
+	this.x = x + this.mouseOffsetX;
+	this.y = y + this.mouseOffsetY;
+};
+
+Node.prototype.draw = function(c) {
+	// draw the circle
+	c.beginPath();
+	c.arc(this.x, this.y, nodeRadius, 0, 2 * Math.PI, false);
+	c.stroke();
+
+	// draw the text
+	drawText(c, this.text, this.x, this.y, null, selectedObject == this);
+
+	// draw a double circle for an accept state
+	if(this.isAcceptState) {
+		c.beginPath();
+		c.arc(this.x, this.y, nodeRadius - 6, 0, 2 * Math.PI, false);
+		c.stroke();
+	}
+};
+
+Node.prototype.closestPointOnCircle = function(x, y) {
+	var dx = x - this.x;
+	var dy = y - this.y;
+	var scale = Math.sqrt(dx * dx + dy * dy);
+	return {
+		'x': this.x + dx * nodeRadius / scale,
+		'y': this.y + dy * nodeRadius / scale,
+	};
+};
+
+Node.prototype.containsPoint = function(x, y) {
+	return (x - this.x)*(x - this.x) + (y - this.y)*(y - this.y) < nodeRadius*nodeRadius;
+};
+
 function SelfLink(node, mouse) {
 	this.node = node;
 	this.anchorAngle = 0;
@@ -293,22 +293,6 @@ SelfLink.prototype.containsPoint = function(x, y) {
 	return (Math.abs(distance) < hitTargetPadding);
 };
 
-function TemporaryLink(from, to) {
-	this.from = from;
-	this.to = to;
-}
-
-TemporaryLink.prototype.draw = function(c) {
-	// draw the line
-	c.beginPath();
-	c.moveTo(this.to.x, this.to.y);
-	c.lineTo(this.from.x, this.from.y);
-	c.stroke();
-
-	// draw the head of the arrow
-	drawArrow(c, this.to.x, this.to.y, Math.atan2(this.to.y - this.from.y, this.to.x - this.from.x));
-};
-
 function StartLink(node, start) {
 	this.node = node;
 	this.deltaX = 0;
@@ -372,99 +356,21 @@ StartLink.prototype.containsPoint = function(x, y) {
 	return (percent > 0 && percent < 1 && Math.abs(distance) < hitTargetPadding);
 };
 
-// draw using this instead of a canvas and call toSVG() afterward
-function ExportAsSVG() {
-	this.fillStyle = 'black';
-	this.strokeStyle = 'black';
-	this.lineWidth = 1;
-	this.font = '12px Arial, sans-serif';
-	this._points = [];
-	this._svgData = '';
-	this._transX = 0;
-	this._transY = 0;
-
-	this.toSVG = function() {
-		return '<?xml version="1.0" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n\n<svg width="800" height="600" version="1.1" xmlns="http://www.w3.org/2000/svg">\n' + this._svgData + '</svg>\n';
-	};
-
-	this.beginPath = function() {
-		this._points = [];
-	};
-	this.arc = function(x, y, radius, startAngle, endAngle, isReversed) {
-		x += this._transX;
-		y += this._transY;
-		var style = 'stroke="' + this.strokeStyle + '" stroke-width="' + this.lineWidth + '" fill="none"';
-
-		if(endAngle - startAngle == Math.PI * 2) {
-			this._svgData += '\t<ellipse ' + style + ' cx="' + fixed(x, 3) + '" cy="' + fixed(y, 3) + '" rx="' + fixed(radius, 3) + '" ry="' + fixed(radius, 3) + '"/>\n';
-		} else {
-			if(isReversed) {
-				var temp = startAngle;
-				startAngle = endAngle;
-				endAngle = temp;
-			}
-
-			if(endAngle < startAngle) {
-				endAngle += Math.PI * 2;
-			}
-
-			var startX = x + radius * Math.cos(startAngle);
-			var startY = y + radius * Math.sin(startAngle);
-			var endX = x + radius * Math.cos(endAngle);
-			var endY = y + radius * Math.sin(endAngle);
-			var useGreaterThan180 = (Math.abs(endAngle - startAngle) > Math.PI);
-			var goInPositiveDirection = 1;
-
-			this._svgData += '\t<path ' + style + ' d="';
-			this._svgData += 'M ' + fixed(startX, 3) + ',' + fixed(startY, 3) + ' '; // startPoint(startX, startY)
-			this._svgData += 'A ' + fixed(radius, 3) + ',' + fixed(radius, 3) + ' '; // radii(radius, radius)
-			this._svgData += '0 '; // value of 0 means perfect circle, others mean ellipse
-			this._svgData += +useGreaterThan180 + ' ';
-			this._svgData += +goInPositiveDirection + ' ';
-			this._svgData += fixed(endX, 3) + ',' + fixed(endY, 3); // endPoint(endX, endY)
-			this._svgData += '"/>\n';
-		}
-	};
-	this.moveTo = this.lineTo = function(x, y) {
-		x += this._transX;
-		y += this._transY;
-		this._points.push({ 'x': x, 'y': y });
-	};
-	this.stroke = function() {
-		if(this._points.length == 0) return;
-		this._svgData += '\t<polygon stroke="' + this.strokeStyle + '" stroke-width="' + this.lineWidth + '" points="';
-		for(var i = 0; i < this._points.length; i++) {
-			this._svgData += (i > 0 ? ' ' : '') + fixed(this._points[i].x, 3) + ',' + fixed(this._points[i].y, 3);
-		}
-		this._svgData += '"/>\n';
-	};
-	this.fill = function() {
-		if(this._points.length == 0) return;
-		this._svgData += '\t<polygon fill="' + this.fillStyle + '" stroke-width="' + this.lineWidth + '" points="';
-		for(var i = 0; i < this._points.length; i++) {
-			this._svgData += (i > 0 ? ' ' : '') + fixed(this._points[i].x, 3) + ',' + fixed(this._points[i].y, 3);
-		}
-		this._svgData += '"/>\n';
-	};
-	this.measureText = function(text) {
-		var c = canvas.getContext('2d');
-		c.font = '20px "Times New Romain", serif';
-		return c.measureText(text);
-	};
-	this.fillText = function(text, x, y) {
-		x += this._transX;
-		y += this._transY;
-		if(text.replace(' ', '').length > 0) {
-			this._svgData += '\t<text x="' + fixed(x, 3) + '" y="' + fixed(y, 3) + '" font-family="Times New Roman" font-size="20">' + textToXML(text) + '</text>\n';
-		}
-	};
-	this.translate = function(x, y) {
-		this._transX = x;
-		this._transY = y;
-	};
-
-	this.save = this.restore = this.clearRect = function(){};
+function TemporaryLink(from, to) {
+	this.from = from;
+	this.to = to;
 }
+
+TemporaryLink.prototype.draw = function(c) {
+	// draw the line
+	c.beginPath();
+	c.moveTo(this.to.x, this.to.y);
+	c.lineTo(this.from.x, this.from.y);
+	c.stroke();
+
+	// draw the head of the arrow
+	drawArrow(c, this.to.x, this.to.y, Math.atan2(this.to.y - this.from.y, this.to.x - this.from.x));
+};
 
 // draw using this instead of a canvas and call toLaTeX() afterward
 function ExportAsLaTeX() {
@@ -572,131 +478,98 @@ function ExportAsLaTeX() {
 	this.translate = this.save = this.restore = this.clearRect = function(){};
 }
 
-function det(a, b, c, d, e, f, g, h, i) {
-	return a*e*i + b*f*g + c*d*h - a*f*h - b*d*i - c*e*g;
-}
+// draw using this instead of a canvas and call toSVG() afterward
+function ExportAsSVG() {
+	this.fillStyle = 'black';
+	this.strokeStyle = 'black';
+	this.lineWidth = 1;
+	this.font = '12px Arial, sans-serif';
+	this._points = [];
+	this._svgData = '';
+	this._transX = 0;
+	this._transY = 0;
 
-function circleFromThreePoints(x1, y1, x2, y2, x3, y3) {
-	var a = det(x1, y1, 1, x2, y2, 1, x3, y3, 1);
-	var bx = -det(x1*x1 + y1*y1, y1, 1, x2*x2 + y2*y2, y2, 1, x3*x3 + y3*y3, y3, 1);
-	var by = det(x1*x1 + y1*y1, x1, 1, x2*x2 + y2*y2, x2, 1, x3*x3 + y3*y3, x3, 1);
-	var c = -det(x1*x1 + y1*y1, x1, y1, x2*x2 + y2*y2, x2, y2, x3*x3 + y3*y3, x3, y3);
-	return {
-		'x': -bx / (2*a),
-		'y': -by / (2*a),
-		'radius': Math.sqrt(bx*bx + by*by - 4*a*c) / (2*Math.abs(a))
+	this.toSVG = function() {
+		return '<?xml version="1.0" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n\n<svg width="800" height="600" version="1.1" xmlns="http://www.w3.org/2000/svg">\n' + this._svgData + '</svg>\n';
 	};
-}
 
-function fixed(number, digits) {
-	return number.toFixed(digits).replace(/0+$/, '').replace(/\.$/, '');
-}
-
-function importJson(jsonString) {
-	if(!JSON) {
-		return;
-	}
-
-	try {
-		var backup = JSON.parse(jsonString);
-		nodes = [];
-		links = [];
-		canvas.width = backup.canvasWidth || canvas.width;
-		canvas.height = backup.canvasHeight || canvas.height;
-		canvasWidthInput.value = canvas.width;
-		canvasHeightInput.value = canvas.height;
-
-		for(var i = 0; i < backup.nodes.length; i++) {
-			var backupNode = backup.nodes[i];
-			var node = new Node(backupNode.x, backupNode.y);
-			node.isAcceptState = backupNode.isAcceptState;
-			node.text = backupNode.text;
-			nodes.push(node);
-		}
-		for(var i = 0; i < backup.links.length; i++) {
-			var backupLink = backup.links[i];
-			var link = null;
-			if(backupLink.type == 'SelfLink') {
-				link = new SelfLink(nodes[backupLink.node]);
-				link.anchorAngle = backupLink.anchorAngle;
-				link.text = backupLink.text;
-			} else if(backupLink.type == 'StartLink') {
-				link = new StartLink(nodes[backupLink.node]);
-				link.deltaX = backupLink.deltaX;
-				link.deltaY = backupLink.deltaY;
-				link.text = backupLink.text;
-			} else if(backupLink.type == 'Link') {
-				link = new Link(nodes[backupLink.nodeA], nodes[backupLink.nodeB]);
-				link.parallelPart = backupLink.parallelPart;
-				link.perpendicularPart = backupLink.perpendicularPart;
-				link.text = backupLink.text;
-				link.lineAngleAdjust = backupLink.lineAngleAdjust;
-			}
-			if(link != null) {
-				links.push(link);
-			}
-		}
-	} catch(e) {
-		alert("Can't import that file!");
-	}
-}
-
-function exportJson() {
-	if(!JSON) {
-		return;
-	}
-
-	var backup = {
-		'nodes': [],
-		'links': [],
-		'canvasWidth': canvas.width,
-		'canvasHeight': canvas.height
+	this.beginPath = function() {
+		this._points = [];
 	};
-	for(var i = 0; i < nodes.length; i++) {
-		var node = nodes[i];
-		var backupNode = {
-			'x': node.x,
-			'y': node.y,
-			'text': node.text,
-			'isAcceptState': node.isAcceptState,
-		};
-		backup.nodes.push(backupNode);
-	}
-	for(var i = 0; i < links.length; i++) {
-		var link = links[i];
-		var backupLink = null;
-		if(link instanceof SelfLink) {
-			backupLink = {
-				'type': 'SelfLink',
-				'node': nodes.indexOf(link.node),
-				'text': link.text,
-				'anchorAngle': link.anchorAngle,
-			};
-		} else if(link instanceof StartLink) {
-			backupLink = {
-				'type': 'StartLink',
-				'node': nodes.indexOf(link.node),
-				'text': link.text,
-				'deltaX': link.deltaX,
-				'deltaY': link.deltaY,
-			};
-		} else if(link instanceof Link) {
-			backupLink = {
-				'type': 'Link',
-				'nodeA': nodes.indexOf(link.nodeA),
-				'nodeB': nodes.indexOf(link.nodeB),
-				'text': link.text,
-				'lineAngleAdjust': link.lineAngleAdjust,
-				'parallelPart': link.parallelPart,
-				'perpendicularPart': link.perpendicularPart,
-			};
-		}
-		if(backupLink != null) {
-			backup.links.push(backupLink);
-		}
-	}
+	this.arc = function(x, y, radius, startAngle, endAngle, isReversed) {
+		x += this._transX;
+		y += this._transY;
+		var style = 'stroke="' + this.strokeStyle + '" stroke-width="' + this.lineWidth + '" fill="none"';
 
-	return JSON.stringify(backup);
+		if(endAngle - startAngle == Math.PI * 2) {
+			this._svgData += '\t<ellipse ' + style + ' cx="' + fixed(x, 3) + '" cy="' + fixed(y, 3) + '" rx="' + fixed(radius, 3) + '" ry="' + fixed(radius, 3) + '"/>\n';
+		} else {
+			if(isReversed) {
+				var temp = startAngle;
+				startAngle = endAngle;
+				endAngle = temp;
+			}
+
+			if(endAngle < startAngle) {
+				endAngle += Math.PI * 2;
+			}
+
+			var startX = x + radius * Math.cos(startAngle);
+			var startY = y + radius * Math.sin(startAngle);
+			var endX = x + radius * Math.cos(endAngle);
+			var endY = y + radius * Math.sin(endAngle);
+			var useGreaterThan180 = (Math.abs(endAngle - startAngle) > Math.PI);
+			var goInPositiveDirection = 1;
+
+			this._svgData += '\t<path ' + style + ' d="';
+			this._svgData += 'M ' + fixed(startX, 3) + ',' + fixed(startY, 3) + ' '; // startPoint(startX, startY)
+			this._svgData += 'A ' + fixed(radius, 3) + ',' + fixed(radius, 3) + ' '; // radii(radius, radius)
+			this._svgData += '0 '; // value of 0 means perfect circle, others mean ellipse
+			this._svgData += +useGreaterThan180 + ' ';
+			this._svgData += +goInPositiveDirection + ' ';
+			this._svgData += fixed(endX, 3) + ',' + fixed(endY, 3); // endPoint(endX, endY)
+			this._svgData += '"/>\n';
+		}
+	};
+	this.moveTo = this.lineTo = function(x, y) {
+		x += this._transX;
+		y += this._transY;
+		this._points.push({ 'x': x, 'y': y });
+	};
+	this.stroke = function() {
+		if(this._points.length == 0) return;
+		this._svgData += '\t<polygon stroke="' + this.strokeStyle + '" stroke-width="' + this.lineWidth + '" points="';
+		for(var i = 0; i < this._points.length; i++) {
+			this._svgData += (i > 0 ? ' ' : '') + fixed(this._points[i].x, 3) + ',' + fixed(this._points[i].y, 3);
+		}
+		this._svgData += '"/>\n';
+	};
+	this.fill = function() {
+		if(this._points.length == 0) return;
+		this._svgData += '\t<polygon fill="' + this.fillStyle + '" stroke-width="' + this.lineWidth + '" points="';
+		for(var i = 0; i < this._points.length; i++) {
+			this._svgData += (i > 0 ? ' ' : '') + fixed(this._points[i].x, 3) + ',' + fixed(this._points[i].y, 3);
+		}
+		this._svgData += '"/>\n';
+	};
+	this.measureText = function(text) {
+		var c = canvas.getContext('2d');
+		c.font = '20px "Times New Romain", serif';
+		return c.measureText(text);
+	};
+	this.fillText = function(text, x, y) {
+		x += this._transX;
+		y += this._transY;
+		if(text.replace(' ', '').length > 0) {
+			this._svgData += '\t<text x="' + fixed(x, 3) + '" y="' + fixed(y, 3) + '" font-family="Times New Roman" font-size="20">' + textToXML(text) + '</text>\n';
+		}
+	};
+	this.translate = function(x, y) {
+		this._transX = x;
+		this._transY = y;
+	};
+
+	this.save = this.restore = this.clearRect = function(){};
 }
 
 var greekLetterNames = [ 'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta', 'Iota', 'Kappa', 'Lambda', 'Mu', 'Nu', 'Xi', 'Omicron', 'Pi', 'Rho', 'Sigma', 'Tau', 'Upsilon', 'Phi', 'Chi', 'Psi', 'Omega' ];
@@ -1270,4 +1143,139 @@ function getNextState() {
 	state = states[statesIndex];
 	importJson(state);
 	draw();
+}
+
+function clearCanvas(){
+	nodes = [];
+	links = [];
+	localStorage.removeItem('fsm');			
+	var context = canvas.getContext('2d')
+	context.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function det(a, b, c, d, e, f, g, h, i) {
+	return a*e*i + b*f*g + c*d*h - a*f*h - b*d*i - c*e*g;
+}
+
+function circleFromThreePoints(x1, y1, x2, y2, x3, y3) {
+	var a = det(x1, y1, 1, x2, y2, 1, x3, y3, 1);
+	var bx = -det(x1*x1 + y1*y1, y1, 1, x2*x2 + y2*y2, y2, 1, x3*x3 + y3*y3, y3, 1);
+	var by = det(x1*x1 + y1*y1, x1, 1, x2*x2 + y2*y2, x2, 1, x3*x3 + y3*y3, x3, 1);
+	var c = -det(x1*x1 + y1*y1, x1, y1, x2*x2 + y2*y2, x2, y2, x3*x3 + y3*y3, x3, y3);
+	return {
+		'x': -bx / (2*a),
+		'y': -by / (2*a),
+		'radius': Math.sqrt(bx*bx + by*by - 4*a*c) / (2*Math.abs(a))
+	};
+}
+
+function fixed(number, digits) {
+	return number.toFixed(digits).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function importJson(jsonString) {
+	if(!JSON) {
+		return;
+	}
+
+	try {
+		var backup = JSON.parse(jsonString);
+		nodes = [];
+		links = [];
+		canvas.width = backup.canvasWidth || canvas.width;
+		canvas.height = backup.canvasHeight || canvas.height;
+		canvasWidthInput.value = canvas.width;
+		canvasHeightInput.value = canvas.height;
+
+		for(var i = 0; i < backup.nodes.length; i++) {
+			var backupNode = backup.nodes[i];
+			var node = new Node(backupNode.x, backupNode.y);
+			node.isAcceptState = backupNode.isAcceptState;
+			node.text = backupNode.text;
+			nodes.push(node);
+		}
+		for(var i = 0; i < backup.links.length; i++) {
+			var backupLink = backup.links[i];
+			var link = null;
+			if(backupLink.type == 'SelfLink') {
+				link = new SelfLink(nodes[backupLink.node]);
+				link.anchorAngle = backupLink.anchorAngle;
+				link.text = backupLink.text;
+			} else if(backupLink.type == 'StartLink') {
+				link = new StartLink(nodes[backupLink.node]);
+				link.deltaX = backupLink.deltaX;
+				link.deltaY = backupLink.deltaY;
+				link.text = backupLink.text;
+			} else if(backupLink.type == 'Link') {
+				link = new Link(nodes[backupLink.nodeA], nodes[backupLink.nodeB]);
+				link.parallelPart = backupLink.parallelPart;
+				link.perpendicularPart = backupLink.perpendicularPart;
+				link.text = backupLink.text;
+				link.lineAngleAdjust = backupLink.lineAngleAdjust;
+			}
+			if(link != null) {
+				links.push(link);
+			}
+		}
+	} catch(e) {
+		alert("Can't import that file!");
+	}
+}
+
+function exportJson() {
+	if(!JSON) {
+		return;
+	}
+
+	var backup = {
+		'nodes': [],
+		'links': [],
+		'canvasWidth': canvas.width,
+		'canvasHeight': canvas.height
+	};
+	for(var i = 0; i < nodes.length; i++) {
+		var node = nodes[i];
+		var backupNode = {
+			'x': node.x,
+			'y': node.y,
+			'text': node.text,
+			'isAcceptState': node.isAcceptState,
+		};
+		backup.nodes.push(backupNode);
+	}
+	for(var i = 0; i < links.length; i++) {
+		var link = links[i];
+		var backupLink = null;
+		if(link instanceof SelfLink) {
+			backupLink = {
+				'type': 'SelfLink',
+				'node': nodes.indexOf(link.node),
+				'text': link.text,
+				'anchorAngle': link.anchorAngle,
+			};
+		} else if(link instanceof StartLink) {
+			backupLink = {
+				'type': 'StartLink',
+				'node': nodes.indexOf(link.node),
+				'text': link.text,
+				'deltaX': link.deltaX,
+				'deltaY': link.deltaY,
+			};
+		} else if(link instanceof Link) {
+			backupLink = {
+				'type': 'Link',
+				'nodeA': nodes.indexOf(link.nodeA),
+				'nodeB': nodes.indexOf(link.nodeB),
+				'text': link.text,
+				'lineAngleAdjust': link.lineAngleAdjust,
+				'parallelPart': link.parallelPart,
+				'perpendicularPart': link.perpendicularPart,
+			};
+		}
+		if(backupLink != null) {
+			backup.links.push(backupLink);
+		}
+	}
+
+	return JSON.stringify(backup);
 }
