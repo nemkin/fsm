@@ -544,6 +544,9 @@ function ExportAsSVG() {
 		}
 		this._svgData += '"/>\n';
 	};
+	this.rect = function() {
+		
+	}
 	this.fill = function() {
 		if(this._points.length == 0) return;
 		this._svgData += '\t<polygon fill="' + this.fillStyle + '" stroke-width="' + this.lineWidth + '" points="';
