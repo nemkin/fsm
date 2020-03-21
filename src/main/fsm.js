@@ -13,6 +13,13 @@ function convertLatexShortcuts(text) {
 		text = text.replace(new RegExp('_' + i, 'g'), String.fromCharCode(8320 + i));
 	}
 
+    // right arrow
+    text = text.replace(new RegExp('\\\\rightarrow', 'g'), String.fromCharCode(8594));
+
+    // quick alternatives for epsilon and arrow
+    text = text.replace(new RegExp('\\\\e', 'g'), String.fromCharCode(949));
+    text = text.replace(new RegExp('\\\\a', 'g'), String.fromCharCode(8594));
+
 	return text;
 }
 
