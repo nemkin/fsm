@@ -17,8 +17,8 @@ function convertLatexShortcuts(text) {
     text = text.replace(new RegExp('\\\\rightarrow', 'g'), String.fromCharCode(8594));
 
     // quick alternatives for epsilon and arrow
-    text = text.replace(new RegExp('\\\\e', 'g'), String.fromCharCode(949));
-    text = text.replace(new RegExp('\\\\a', 'g'), String.fromCharCode(8594));
+    text = text.replace(new RegExp('\\\\e ', 'g'), String.fromCharCode(949) + ' ');
+    text = text.replace(new RegExp('\\\\a ', 'g'), String.fromCharCode(8594) + ' ');
 
 	return text;
 }
